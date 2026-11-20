@@ -1,5 +1,7 @@
+using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using WebApi.Dtos;
 using WebApi.Models;
 
 [Route("api/[controller]")]
@@ -7,21 +9,25 @@ using WebApi.Models;
 public class CursosController : ControllerBase
 {
     private readonly WebApiContext _context;
-    public CursosController(WebApiContext context)
+    private readonly IMapper _mapper;
+    public CursosController(WebApiContext context, IMapper mapper)
     {
         _context = context;
+        _mapper = mapper;
     }
 
     // GET: api/Curso
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Curso>>> GetCurso()
+    public async Task<ActionResult<IEnumerable<CursoDto>>> GetCurso()
     {
-        return await _context.Curso.ToListAsync();
+        var m = await _context.Curso.ToListAsync();
+        var dtos = _mapper.Map<List<Curso>, List<CursoDto>>(m);
+        return dtos;
     }
 
     // GET: api/Curso/5
     [HttpGet("{id}")]
-    public async Task<ActionResult<Curso>> GetCurso(int id)
+    public async Task<ActionResult<CursoDto>> GetCurso(int id)
     {
         var curso = await _context.Curso.FindAsync(id);
 
@@ -29,21 +35,26 @@ public class CursosController : ControllerBase
         {
             return NotFound();
         }
-
-        return curso;
+        var dto = _mapper.Map<CursoDto>(curso);
+        return dto;
     }
 
     // PUT: api/Curso/5
     // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
     [HttpPut("{id}")]
-    public async Task<IActionResult> PutCurso(int? id, Curso curso)
+    public async Task<IActionResult> PutCurso(int? id, CursoDto dto)
     {
-        if (id != curso.Id)
+        if (id != dto.Id)
         {
             return BadRequest();
         }
-
-        _context.Entry(curso).State = EntityState.Modified;
+        var db = await _context.Curso.FindAsync(id);
+        if (db == null)
+        {
+            return NotFound();
+        }
+        _mapper.Map<CursoDto, Curso>(dto, db);
+        _context.Entry(db).State = EntityState.Modified;
 
         try
         {
@@ -67,12 +78,13 @@ public class CursosController : ControllerBase
     // POST: api/Curso
     // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
     [HttpPost]
-    public async Task<ActionResult<Curso>> PostCurso(Curso curso)
+    public async Task<ActionResult<Curso>> PostCurso(CursoDto dto)
     {
-        _context.Curso.Add(curso);
+        var db = _mapper.Map<Curso>(dto);
+        _context.Curso.Add(db);
         await _context.SaveChangesAsync();
 
-        return CreatedAtAction("GetCurso", new { id = curso.Id }, curso);
+        return CreatedAtAction("GetCurso", new { id = dto.Id }, dto);
     }
 
     // DELETE: api/Curso/5
